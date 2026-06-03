@@ -54,7 +54,7 @@
             .col-name { display: table-cell !important; width: 25% !important; padding: 14px 12px !important; border-bottom: 1.5px solid #d1d5db !important; vertical-align: top !important; background-color: #f8f9fa !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-weight: bold !important; text-transform: uppercase !important; }
             .col-desc { display: table-cell !important; width: 75% !important; padding: 14px 15px !important; border-bottom: 1.5px solid #d1d5db !important; vertical-align: top !important; text-align: justify !important; line-height: 1.6 !important; }
             .item-description { font-size: 10.5pt !important; color: #2d3748 !important; }
-            .memo-img-preview { display: none !important; } /* Nasconde le foto in stampa per risparmiare inchiostro */
+            .memo-img-preview { display: none !important; }
         }
     </style>
 </head>
@@ -127,8 +127,8 @@
 </div>
 
 <script>
-    // URL DELLA TUA WEB APP COPIATO DA GOOGLE APPS SCRIPT
-    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwvSE8J1XDcTGhJymjmqN6qeNTZnxnol8QcsTDxq4zeU-aOs1uIdAsKwsT3v0uASQcVeg/exec";
+    // INCOLLA QUI IL NUOVO LINK GENERATO DOPO LA NUOVA DISTRIBUZIONE
+    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxhBKPnkX4jRyvHyGkQqU455l6v9j1qqGPyNZt2YV5Bl8dc9gS4GhJocHfufzjJrKZ6BA/exec";
 
     function switchView(viewId) {
         document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
@@ -154,54 +154,49 @@
         const submitBtn = document.getElementById('submit-btn');
         const statusDiv = document.getElementById('upload-status');
         
-        submitBtn.innerText = "Elaborazione...";
+        submitBtn.innerText = "Salvataggio in corso...";
         submitBtn.disabled = true;
         
-        let fotoUrl = document.getElementById('existing-photo-url').value;
+        let existingFotoUrl = document.getElementById('existing-photo-url').value;
+        let base64Data = "";
+        let filename = "";
         
-        // 1. Se c'è un nuovo file inserito, caricalo su Drive prima di salvare la riga
         if (fileInput.files.length > 0) {
-            statusDiv.innerText = "Caricamento immagine su Google Drive...";
+            statusDiv.innerText = "Elaborazione immagine...";
             const file = fileInput.files[0];
-            const base64 = await toBase64(file);
-            
-            try {
-                let uploadPayload = { action: "uploadFile", filename: file.name, base64: base64 };
-                let response = await fetch(CLOUD_URL, {
-                    method: "POST",
-                    body: JSON.stringify(uploadPayload)
-                });
-                let result = await response.json();
-                if (result.status === "success") {
-                    fotoUrl = result.fileUrl;
-                    statusDiv.innerText = "Immagine salvata!";
-                } else {
-                    alert("Errore nel caricamento foto su Drive: " + result.message);
-                }
-            } catch (err) {
-                console.log("Nota: Se usi restrizioni CORS, il caricamento potrebbe completarsi senza risposta leggibile.");
-            }
+            filename = file.name;
+            base64Data = await toBase64(file);
         }
         
-        // 2. Salva o Aggiorna i dati nel foglio Google Sheets
-        submitBtn.innerText = "Salvataggio nel Cloud...";
-        let payload = id === "" 
-            ? { action: "add", id: Date.now().toString(), name: name, desc: desc, fotoUrl: fotoUrl } 
-            : { action: "update", id: id, name: name, desc: desc, fotoUrl: fotoUrl };
-            
+        let payload = {
+            action: id === "" ? "add" : "update",
+            id: id === "" ? Date.now().toString() : id,
+            name: name,
+            desc: desc,
+            fotoUrl: existingFotoUrl,
+            base64: base64Data,
+            filename: filename
+        };
+        
+        statusDiv.innerText = "Invio dati al Cloud Google...";
+        
         fetch(CLOUD_URL, { 
-            method: "POST", 
+            method: "POST",
+            mode: "no-cors",
+            cache: "no-cache",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload) 
         }).then(() => {
+            // Poiché usiamo no-cors, la pagina web va avanti fiduciosa dopo l'invio
             setTimeout(() => {
                 document.getElementById('item-form').reset();
                 submitBtn.innerText = "Salva";
                 submitBtn.disabled = false;
                 statusDiv.innerText = "";
                 switchView('home-view');
-            }, 800);
-        }).catch(() => { 
-            alert("Errore nel salvataggio cloud."); 
+            }, 1000);
+        }).catch((err) => { 
+            alert("Errore nel collegamento cloud."); 
             submitBtn.disabled = false; 
         });
     }
@@ -219,10 +214,8 @@
                 const tr = document.createElement('tr');
                 tr.className = "table-row-item";
                 
-                // Controllo se il promemoria contiene una foto caricata su Drive
                 let imgHtml = "";
                 if (item.fotoUrl && item.fotoUrl.trim() !== "") {
-                    // Trasforma l'URL standard di Drive in un URL visibile direttamente come immagine
                     let directImgUrl = item.fotoUrl.replace("open?id=", "uc?export=view&id=").replace("file/d/", "uc?export=view&id=").replace("/view?usp=drivesdk", "");
                     imgHtml = `<img src="${directImgUrl}" class="memo-img-preview" onclick="zoomImage('${directImgUrl}')" alt="Anteprima">`;
                 }
@@ -246,6 +239,8 @@
                     </td>`;
                 listElement.appendChild(tr);
             });
+        }).catch(() => {
+            listElement.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: red;">Errore nel caricamento dei dati dal cloud. Controlla la distribuzione di Apps Script.</td></tr>';
         });
     }
     
@@ -253,7 +248,7 @@
         document.getElementById('item-name').value = name;
         document.getElementById('item-desc').value = desc;
         document.getElementById('edit-index').value = id;
-        document.getElementById('existing-photo-url').value = fotoUrl; // Mantiene la foto esistente se non viene cambiata
+        document.getElementById('existing-photo-url').value = fotoUrl;
         document.getElementById('upload-status').innerText = fotoUrl !== "" ? "📸 Questo promemoria ha già una foto allegata." : "";
         document.getElementById('form-title').innerText = "✏️ Modifica Promemoria";
         document.getElementById('submit-btn').innerText = "Aggiorna";
@@ -262,7 +257,7 @@
     
     function deleteItem(id) {
         if (confirm("Cancellare dal cloud?")) {
-            fetch(CLOUD_URL, { method: "POST", body: JSON.stringify({ action: "delete", id: id }) }).then(() => { setTimeout(() => { renderList(); }, 500); });
+            fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "delete", id: id }) }).then(() => { setTimeout(() => { renderList(); }, 500); });
         }
     }
     
