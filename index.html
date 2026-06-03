@@ -180,9 +180,9 @@
     
     function printAll() { window.print(); }
     
-    // NUOVA FUNZIONE ULTRA-COMPATIBILE CON SCOMPARSA IMMEDIATA SULLO SCHERMO
+    // FUNZIONE DI STAMPA DISTRUTTIVA/RICOSTRUTTIVA (A PROVA DI TELEFONO)
     function printSelected() {
-        const checkboxes = document.querySelectorAll('.print-checkbox');
+        const listElement = document.getElementById('items-list');
         const checkedBoxes = document.querySelectorAll('.print-checkbox:checked');
         
         if (checkedBoxes.length === 0) { 
@@ -190,24 +190,29 @@
             return; 
         }
         
-        // Nascondiamo IMMEDIATAMENTE gli elementi non spuntati sia da schermo che da stampa cambiando lo stile inline
-        checkboxes.forEach(cb => { 
-            if (!cb.checked) {
-                cb.closest('.table-row-item').style.setProperty('display', 'none', 'important'); 
-            }
+        // 1. Salviamo in memoria tutte le righe attualmente presenti nello schermo
+        const originalHtml = listElement.innerHTML;
+        
+        // 2. Costruiamo una stringa HTML inserendo SOLO le righe selezionate
+        let selectedHtml = "";
+        checkedBoxes.forEach(cb => {
+            const originalRow = cb.closest('.table-row-item');
+            selectedHtml += `<tr class="table-row-item">${originalRow.innerHTML}</tr>`;
         });
         
-        // Aspettiamo una frazione di secondo per dare il tempo allo smartphone di rendersi conto del cambio grafico
+        // 3. Sostituiamo la tabella sullo schermo lasciando SOLO i selezionati
+        listElement.innerHTML = selectedHtml;
+        
+        // Un piccolissimo ritardo per far digerire la cosa al cellulare, poi parte la stampa
         setTimeout(() => {
             window.print();
             
-            // Appena si chiude la schermata di stampa, ripristiniamo tutto come prima sullo schermo
-            checkboxes.forEach(cb => {
-                cb.closest('.table-row-item').style.display = "";
-            });
-            // Sforza un rinfresco del filtro se c'era del testo scritto nella ricerca
-            filterItems();
-        }, 250);
+            // 4. Appena si chiude la schermata di stampa, rimettiamo a posto la lista completa
+            setTimeout(() => {
+                listElement.innerHTML = originalHtml;
+                filterItems(); // Mantieni eventuali filtri di ricerca attivi
+            }, 500);
+        }, 150);
     }
 
     function escapeHtml(str) { return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
