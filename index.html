@@ -81,7 +81,7 @@
     <div id="search-view" class="view hidden">
         <h2 class="no-print">🔍 Cerca e Sfoglia</h2>
         <div class="search-box no-print">
-            <input type="text" id="search-input" oninput="filterItems()" placeholder="Scrivi per cercare...">
+            <input type="text" id="search-input" oninput="filterItems()" placeholder="Cerca nel nome o nella descrizione...">
         </div>
         <div class="print-actions no-print" style="margin-bottom: 15px; display: flex; gap: 10px;">
             <button onclick="printAll()" class="btn" style="background-color: #34495e; color: white; flex: 1;">🖨️ Stampa Tutto</button>
@@ -170,17 +170,23 @@
             fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "delete", id: id }) }).then(() => { setTimeout(() => { renderList(); }, 500); });
         }
     }
+    
     function filterItems() {
         const text = document.getElementById('search-input').value.toLowerCase();
         document.querySelectorAll('.table-row-item').forEach(row => {
             const title = row.querySelector('.item-title').innerText.toLowerCase();
-            row.style.display = title.includes(text) ? "" : "none";
+            const desc = row.querySelector('.item-description').innerText.toLowerCase();
+            
+            if (title.includes(text) || desc.includes(text)) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
         });
     }
     
     function printAll() { window.print(); }
     
-    // FUNZIONE DI STAMPA DISTRUTTIVA/RICOSTRUTTIVA (A PROVA DI TELEFONO)
     function printSelected() {
         const listElement = document.getElementById('items-list');
         const checkedBoxes = document.querySelectorAll('.print-checkbox:checked');
@@ -190,32 +196,35 @@
             return; 
         }
         
-        // 1. Salviamo in memoria tutte le righe attualmente presenti nello schermo
         const originalHtml = listElement.innerHTML;
-        
-        // 2. Costruiamo una stringa HTML inserendo SOLO le righe selezionate
         let selectedHtml = "";
         checkedBoxes.forEach(cb => {
             const originalRow = cb.closest('.table-row-item');
             selectedHtml += `<tr class="table-row-item">${originalRow.innerHTML}</tr>`;
         });
         
-        // 3. Sostituiamo la tabella sullo schermo lasciando SOLO i selezionati
         listElement.innerHTML = selectedHtml;
         
-        // Un piccolissimo ritardo per far digerire la cosa al cellulare, poi parte la stampa
         setTimeout(() => {
             window.print();
-            
-            // 4. Appena si chiude la schermata di stampa, rimettiamo a posto la lista completa
             setTimeout(() => {
                 listElement.innerHTML = originalHtml;
-                filterItems(); // Mantieni eventuali filtri di ricerca attivi
+                filterItems();
             }, 500);
         }, 150);
     }
 
-    function escapeHtml(str) { return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+    // QUESTA È LA FUNZIONE RIPRISTINATA CHE SALVA LA MATITA INDENTRO L'APP
+    function escapeHtml(str) { 
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;")
+            .replace(/\n/g, "\\n")  /* Gestisce correttamente gli a capo nella modifica */
+            .replace(/\r/g, "\\r");
+    }
 </script>
 </body>
 </html>
