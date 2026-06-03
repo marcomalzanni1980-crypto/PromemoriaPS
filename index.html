@@ -28,6 +28,16 @@
         .action-buttons { display: flex; gap: 8px; }
         .btn-action { background: none; border: none; font-size: 16px; cursor: pointer; }
         .print-checkbox { width: 18px; height: 18px; cursor: pointer; }
+        
+        /* Stili per l'anteprima e gestione immagini */
+        .status-message { font-size: 14px; color: #e67e22; font-weight: bold; margin-top: 5px; text-align: center; }
+        .memo-img-preview { max-width: 80px; max-height: 80px; border-radius: 6px; cursor: pointer; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .memo-img-preview:hover { transform: scale(1.05); }
+        .desc-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; width: 100%; }
+
+        /* Modal per ingrandire la foto a tutto schermo */
+        .modal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
+        .modal img { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); }
 
         /* REGOLAZIONE STAMPA UNIFICATA ELEGANTE */
         @media print {
@@ -44,6 +54,7 @@
             .col-name { display: table-cell !important; width: 25% !important; padding: 14px 12px !important; border-bottom: 1.5px solid #d1d5db !important; vertical-align: top !important; background-color: #f8f9fa !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-weight: bold !important; text-transform: uppercase !important; }
             .col-desc { display: table-cell !important; width: 75% !important; padding: 14px 15px !important; border-bottom: 1.5px solid #d1d5db !important; vertical-align: top !important; text-align: justify !important; line-height: 1.6 !important; }
             .item-description { font-size: 10.5pt !important; color: #2d3748 !important; }
+            .memo-img-preview { display: none !important; } /* Nasconde le foto in stampa per risparmiare inchiostro */
         }
     </style>
 </head>
@@ -63,6 +74,8 @@
         <h2 id="form-title">➕ Aggiungi Nuovo Promemoria</h2>
         <form id="item-form" onsubmit="saveItem(event)">
             <input type="hidden" id="edit-index" value="">
+            <input type="hidden" id="existing-photo-url" value="">
+            
             <div class="form-group">
                 <label for="item-name">Nome:</label>
                 <input type="text" id="item-name" required placeholder="Es. Nota XYZ, Appunto..." oninput="this.value = this.value.toUpperCase()">
@@ -71,9 +84,16 @@
                 <label for="item-desc">Descrizione:</label>
                 <textarea id="item-desc" rows="4" required placeholder="Inserisci qui i dettagli..."></textarea>
             </div>
+            
+            <div class="form-group">
+                <label for="item-file">📸 Allega Foto (Opzionale):</label>
+                <input type="file" id="item-file" accept="image/*" capture="environment">
+                <div id="upload-status" class="status-message"></div>
+            </div>
+            
             <div class="button-group">
                 <button type="submit" id="submit-btn" class="btn btn-save">Salva</button>
-                <button type="button" onclick="switchView('home-view')" class="btn btn-back">Torna alla Home</button>
+                <button type="button" onclick="switchView('home-view')" class="btn btn-back" style="margin-top: 10px;">Torna alla Home</button>
             </div>
         </form>
     </div>
@@ -102,72 +122,147 @@
     </div>
 </div>
 
+<div id="image-modal" class="modal" onclick="this.style.display='none'">
+    <img id="modal-img" src="" alt="Foto Ingrandita">
+</div>
+
 <script>
-    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbzld3-X7GGBdRUWNvXIV_NWReZ6Yd-cr4bL0uoh-PyedGmaLJrCuhH-HDwKqERa1aDxCQ/exec";
+    // URL DELLA TUA WEB APP COPIATO DA GOOGLE APPS SCRIPT
+    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxr6arNXt4N7_ExaS6SVyMOGQyHXKRl-RnQSTl1x0AILd9jI2IvWcp65IWzyblTdLxeMQ/exec";
 
     function switchView(viewId) {
         document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
         document.getElementById(viewId).classList.remove('hidden');
     }
+    
     function openAddView() {
         document.getElementById('item-form').reset();
         document.getElementById('edit-index').value = "";
+        document.getElementById('existing-photo-url').value = "";
+        document.getElementById('upload-status').innerText = "";
         document.getElementById('form-title').innerText = "➕ Aggiungi Nuovo Promemoria";
         document.getElementById('submit-btn').innerText = "Salva";
         switchView('add-view');
     }
-    function saveItem(event) {
+    
+    async function saveItem(event) {
         event.preventDefault();
         const name = document.getElementById('item-name').value.trim().toUpperCase();
         const desc = document.getElementById('item-desc').value.trim();
         const id = document.getElementById('edit-index').value;
+        const fileInput = document.getElementById('item-file');
         const submitBtn = document.getElementById('submit-btn');
-        submitBtn.innerText = "Salvando...";
+        const statusDiv = document.getElementById('upload-status');
+        
+        submitBtn.innerText = "Elaborazione...";
         submitBtn.disabled = true;
-        let payload = id === "" ? { action: "add", id: Date.now().toString(), name: name, desc: desc } : { action: "update", id: id, name: name, desc: desc };
-        fetch(CLOUD_URL, { method: "POST", mode: "no-cors", cache: "no-cache", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(() => {
+        
+        let fotoUrl = document.getElementById('existing-photo-url').value;
+        
+        // 1. Se c'è un nuovo file inserito, caricalo su Drive prima di salvare la riga
+        if (fileInput.files.length > 0) {
+            statusDiv.innerText = "Caricamento immagine su Google Drive...";
+            const file = fileInput.files[0];
+            const base64 = await toBase64(file);
+            
+            try {
+                let uploadPayload = { action: "uploadFile", filename: file.name, base64: base64 };
+                let response = await fetch(CLOUD_URL, {
+                    method: "POST",
+                    body: JSON.stringify(uploadPayload)
+                });
+                let result = await response.json();
+                if (result.status === "success") {
+                    fotoUrl = result.fileUrl;
+                    statusDiv.innerText = "Immagine salvata!";
+                } else {
+                    alert("Errore nel caricamento foto su Drive: " + result.message);
+                }
+            } catch (err) {
+                console.log("Nota: Se usi restrizioni CORS, il caricamento potrebbe completarsi senza risposta leggibile.");
+            }
+        }
+        
+        // 2. Salva o Aggiorna i dati nel foglio Google Sheets
+        submitBtn.innerText = "Salvataggio nel Cloud...";
+        let payload = id === "" 
+            ? { action: "add", id: Date.now().toString(), name: name, desc: desc, fotoUrl: fotoUrl } 
+            : { action: "update", id: id, name: name, desc: desc, fotoUrl: fotoUrl };
+            
+        fetch(CLOUD_URL, { 
+            method: "POST", 
+            body: JSON.stringify(payload) 
+        }).then(() => {
             setTimeout(() => {
                 document.getElementById('item-form').reset();
                 submitBtn.innerText = "Salva";
                 submitBtn.disabled = false;
+                statusDiv.innerText = "";
                 switchView('home-view');
             }, 800);
-        }).catch(() => { alert("Errore cloud"); submitBtn.disabled = false; });
+        }).catch(() => { 
+            alert("Errore nel salvataggio cloud."); 
+            submitBtn.disabled = false; 
+        });
     }
+    
     function renderList() {
         const listElement = document.getElementById('items-list');
         listElement.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px;">Caricamento dal cloud...</td></tr>';
+        
         fetch(CLOUD_URL).then(r => r.json()).then(items => {
             listElement.innerHTML = '';
             items.sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
             if (items.length === 0) { listElement.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px;">Nessun promemoria.</td></tr>'; return; }
+            
             items.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.className = "table-row-item";
+                
+                // Controllo se il promemoria contiene una foto caricata su Drive
+                let imgHtml = "";
+                if (item.fotoUrl && item.fotoUrl.trim() !== "") {
+                    // Trasforma l'URL standard di Drive in un URL visibile direttamente come immagine
+                    let directImgUrl = item.fotoUrl.replace("open?id=", "uc?export=view&id=").replace("file/d/", "uc?export=view&id=").replace("/view?usp=drivesdk", "");
+                    imgHtml = `<img src="${directImgUrl}" class="memo-img-preview" onclick="zoomImage('${directImgUrl}')" alt="Anteprima">`;
+                }
+                
                 tr.innerHTML = `
                     <td class="col-name">
-                        <div class="cell-name-wrapper"><input type="checkbox" class="print-checkbox no-print" value="${item.id}"><span class="item-title">${item.name}</span></div>
+                        <div class="cell-name-wrapper">
+                            <input type="checkbox" class="print-checkbox no-print" value="${item.id}">
+                            <span class="item-title">${item.name}</span>
+                        </div>
                         <div class="action-buttons no-print">
-                            <button onclick="editItem('${item.id}', '${escapeHtml(item.name)}', '${escapeHtml(item.desc)}')" class="btn-action">✏️</button>
+                            <button onclick="editItem('${item.id}', '${escapeHtml(item.name)}', '${escapeHtml(item.desc)}', '${item.fotoUrl || ""}')" class="btn-action">✏️</button>
                             <button onclick="deleteItem('${item.id}')" class="btn-action">🗑️</button>
                         </div>
                     </td>
-                    <td class="col-desc"><div class="item-description">${item.desc.replace(/\n/g, '<br>')}</div></td>`;
+                    <td class="col-desc">
+                        <div class="desc-container">
+                            <div class="item-description">${item.desc.replace(/\n/g, '<br>')}</div>
+                            ${imgHtml}
+                        </div>
+                    </td>`;
                 listElement.appendChild(tr);
             });
         });
     }
-    function editItem(id, name, desc) {
+    
+    function editItem(id, name, desc, fotoUrl) {
         document.getElementById('item-name').value = name;
         document.getElementById('item-desc').value = desc;
         document.getElementById('edit-index').value = id;
+        document.getElementById('existing-photo-url').value = fotoUrl; // Mantiene la foto esistente se non viene cambiata
+        document.getElementById('upload-status').innerText = fotoUrl !== "" ? "📸 Questo promemoria ha già una foto allegata." : "";
         document.getElementById('form-title').innerText = "✏️ Modifica Promemoria";
         document.getElementById('submit-btn').innerText = "Aggiorna";
         switchView('add-view');
     }
+    
     function deleteItem(id) {
         if (confirm("Cancellare dal cloud?")) {
-            fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "delete", id: id }) }).then(() => { setTimeout(() => { renderList(); }, 500); });
+            fetch(CLOUD_URL, { method: "POST", body: JSON.stringify({ action: "delete", id: id }) }).then(() => { setTimeout(() => { renderList(); }, 500); });
         }
     }
     
@@ -214,7 +309,18 @@
         }, 150);
     }
 
-    // QUESTA È LA FUNZIONE RIPRISTINATA CHE SALVA LA MATITA INDENTRO L'APP
+    function zoomImage(url) {
+        document.getElementById('modal-img').src = url;
+        document.getElementById('image-modal').style.display = 'flex';
+    }
+
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
     function escapeHtml(str) { 
         return str
             .replace(/&/g, "&amp;")
@@ -222,7 +328,7 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;")
-            .replace(/\n/g, "\\n")  /* Gestisce correttamente gli a capo nella modifica */
+            .replace(/\n/g, "\\n")
             .replace(/\r/g, "\\r");
     }
 </script>
