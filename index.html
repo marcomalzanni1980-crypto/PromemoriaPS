@@ -127,8 +127,8 @@
 </div>
 
 <script>
-    // INCOLLA QUI IL NUOVO LINK GENERATO DOPO LA NUOVA DISTRIBUZIONE
-    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxhBKPnkX4jRyvHyGkQqU455l6v9j1qqGPyNZt2YV5Bl8dc9gS4GhJocHfufzjJrKZ6BA/exec";
+    // URL DELLA TUA WEB APP AGGIORNATO ALL'ULTIMA DISTRIBUZIONE
+    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwozdFGiW7oQWmtdsSyFhKOC1myCs1lvVap9YjzL3haAaIP0LnuHIuP0jU5Z8GXwFKP1g/exec";
 
     function switchView(viewId) {
         document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
@@ -187,7 +187,6 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload) 
         }).then(() => {
-            // Poiché usiamo no-cors, la pagina web va avanti fiduciosa dopo l'invio
             setTimeout(() => {
                 document.getElementById('item-form').reset();
                 submitBtn.innerText = "Salva";
@@ -216,8 +215,11 @@
                 
                 let imgHtml = "";
                 if (item.fotoUrl && item.fotoUrl.trim() !== "") {
-                    let directImgUrl = item.fotoUrl.replace("open?id=", "uc?export=view&id=").replace("file/d/", "uc?export=view&id=").replace("/view?usp=drivesdk", "");
-                    imgHtml = `<img src="${directImgUrl}" class="memo-img-preview" onclick="zoomImage('${directImgUrl}')" alt="Anteprima">`;
+                    let finalUrl = item.fotoUrl;
+                    if (item.fotoUrl.includes("drive.google.com")) {
+                        finalUrl = item.fotoUrl.replace("open?id=", "uc?export=view&id=").replace("file/d/", "uc?export=view&id=").replace("/view?usp=drivesdk", "");
+                    }
+                    imgHtml = `<img src="${finalUrl}" class="memo-img-preview" onclick="zoomImage('${finalUrl}')" alt="Anteprima">`;
                 }
                 
                 tr.innerHTML = `
