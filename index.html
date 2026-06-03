@@ -38,9 +38,6 @@
             .print-only { display: block !important; background-color: #2c3e50 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; padding: 15px 20px !important; margin-bottom: 30px !important; border-radius: 4px !important; }
             .print-only h1 { color: #ffffff !important; text-align: left !important; font-size: 18pt !important; font-weight: bold !important; margin: 0 !important; letter-spacing: 1px !important; }
             
-            /* Questa regola nasconderà le righe non spuntate sul foglio */
-            .mobile-hide-print { display: none !important; }
-            
             #items-table { display: table !important; width: 100% !important; border-collapse: collapse !important; }
             .table-row-item { display: table-row !important; background: transparent !important; page-break-inside: avoid !important; }
             .table-row-item:nth-child(even) td { background-color: #f9f9f9 !important; }
@@ -91,6 +88,8 @@
             <button onclick="printSelected()" class="btn" style="background-color: #2980b9; color: white; flex: 1;">🖨️ Stampa Selezionati</button>
         </div>
         
+        <button onclick="switchView('home-view')" class="btn btn-back no-print" style="margin-bottom: 20px;">Torna alla Home</button>
+        
         <div class="print-only" style="display: none;">
             <h1>STAMPA PROMEMORIA PS</h1>
         </div>
@@ -100,7 +99,6 @@
                 <tbody id="items-list"></tbody>
             </table>
         </div>
-        <button onclick="switchView('home-view')" class="btn btn-back no-print" style="margin-top: 20px;">Torna alla Home</button>
     </div>
 </div>
 
@@ -182,7 +180,7 @@
     
     function printAll() { window.print(); }
     
-    // NUOVA FUNZIONE COMPATIBILE AL 100% CON SMARTPHONE E PC
+    // NUOVA FUNZIONE ULTRA-COMPATIBILE CON SCOMPARSA IMMEDIATA SULLO SCHERMO
     function printSelected() {
         const checkboxes = document.querySelectorAll('.print-checkbox');
         const checkedBoxes = document.querySelectorAll('.print-checkbox:checked');
@@ -192,22 +190,24 @@
             return; 
         }
         
-        // 1. Applichiamo la classe di sparizione a chi NON è selezionato
+        // Nascondiamo IMMEDIATAMENTE gli elementi non spuntati sia da schermo che da stampa cambiando lo stile inline
         checkboxes.forEach(cb => { 
             if (!cb.checked) {
-                cb.closest('.table-row-item').classList.add('mobile-hide-print'); 
+                cb.closest('.table-row-item').style.setProperty('display', 'none', 'important'); 
             }
         });
         
-        // 2. Lanciamo la stampa nativa del dispositivo (che ora funziona su ogni telefono)
-        window.print();
-        
-        // 3. Ripristiniamo subito la vista normale sullo schermo
+        // Aspettiamo una frazione di secondo per dare il tempo allo smartphone di rendersi conto del cambio grafico
         setTimeout(() => {
+            window.print();
+            
+            // Appena si chiude la schermata di stampa, ripristiniamo tutto come prima sullo schermo
             checkboxes.forEach(cb => {
-                cb.closest('.table-row-item').classList.remove('mobile-hide-print');
+                cb.closest('.table-row-item').style.display = "";
             });
-        }, 500);
+            // Sforza un rinfresco del filtro se c'era del testo scritto nella ricerca
+            filterItems();
+        }, 250);
     }
 
     function escapeHtml(str) { return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
