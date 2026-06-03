@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Promemoria PS</title>
     <style>
-        /* IL TUO CSS ELEGANTE */
+        /* CSS SCHERMO */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 650px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
         h1, h2 { text-align: center; color: #2c3e50; margin-top: 0; }
@@ -29,13 +29,17 @@
         .btn-action { background: none; border: none; font-size: 16px; cursor: pointer; }
         .print-checkbox { width: 18px; height: 18px; cursor: pointer; }
 
+        /* CSS STAMPA RIGIDO */
         @media print {
             @page { margin: 20mm 15mm !important; }
             body { background: white !important; color: #000 !important; margin: 0 !important; padding: 10px !important; font-size: 11pt !important; }
             .container { box-shadow: none !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
             .no-print { display: none !important; }
             .print-only { display: block !important; border-bottom: 2px solid #000 !important; padding-bottom: 5px; margin-bottom: 20px; }
+            
+            /* LA CORREZIONE: Nasconde davvero le righe non selezionate */
             .force-hide-print { display: none !important; }
+            
             #items-table { display: table !important; width: 100% !important; border-collapse: collapse !important; }
             .table-row-item { display: table-row !important; background: transparent !important; page-break-inside: avoid !important; }
             .table-row-item:nth-child(even) td { background-color: #f9f9f9 !important; }
@@ -86,7 +90,7 @@
             <button onclick="printSelected()" class="btn" style="background-color: #2980b9; color: white; flex: 1;">🖨️ Stampa Selezionati</button>
         </div>
         <div class="print-only" style="display: none;">
-            <h1 style="text-align: center;">STAMPA PROMEMORIA PS</h1>
+            <h1 style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">STAMPA PROMEMORIA PS</h1>
         </div>
         <div class="list-container">
             <table id="items-table" style="width:100%; border-collapse: collapse;">
@@ -175,8 +179,13 @@
     function printAll() { window.print(); }
     function printSelected() {
         const checkboxes = document.querySelectorAll('.print-checkbox');
-        if (document.querySelectorAll('.print-checkbox:checked').length === 0) { alert("Seleziona almeno una nota."); return; }
-        checkboxes.forEach(cb => { if (!cb.checked) cb.closest('.table-row-item').classList.add('force-hide-print'); });
+        const checkedBoxes = document.querySelectorAll('.print-checkbox:checked');
+        if (checkedBoxes.length === 0) { alert("Seleziona almeno una nota."); return; }
+        checkboxes.forEach(cb => { 
+            if (!cb.checked) {
+                cb.closest('.table-row-item').classList.add('force-hide-print'); 
+            }
+        });
         window.print();
         checkboxes.forEach(cb => cb.closest('.table-row-item').classList.remove('force-hide-print'));
     }
