@@ -71,6 +71,7 @@
 <body>
 
 <div class="container">
+    <!-- SCHERMATA HOME -->
     <div id="home-view" class="view">
         <h1>📝 PROMEMORIA PS</h1>
         <p>Gestisci i tuoi elementi e le loro descrizioni in modo semplice.</p>
@@ -81,6 +82,7 @@
         </div>
     </div>
 
+    <!-- SCHERMATA INSERIMENTO / MODIFICA -->
     <div id="add-view" class="view hidden">
         <h2 id="form-title">➕ Aggiungi Nuovo Promemoria</h2>
         <form id="item-form" onsubmit="saveItem(event)">
@@ -109,6 +111,7 @@
         </form>
     </div>
 
+    <!-- SCHERMATA CERCA -->
     <div id="search-view" class="view hidden">
         <h2>🔍 Cerca e Sfoglia</h2>
         
@@ -117,7 +120,8 @@
         </div>
 
         <div id="alphabet-filter-bar" class="alphabet-bar">
-            </div>
+            <!-- Generato dinamicamente -->
+        </div>
         
         <button onclick="switchView('home-view')" class="btn btn-back" style="margin-bottom: 20px;">Torna alla Home</button>
         
@@ -128,6 +132,7 @@
         </div>
     </div>
 
+    <!-- SCHERMATA STAMPA -->
     <div id="print-view" class="view hidden">
         <h2 class="no-print">🖨️ Stampa Promemoria</h2>
         
@@ -154,13 +159,14 @@
     </div>
 </div>
 
+<!-- MODAL INGRANDIMENTO IMMAGINE -->
 <div id="image-modal" class="modal" onclick="this.style.display='none'">
     <img id="modal-img" src="" alt="Foto Ingrandita">
 </div>
 
 <script>
-    // URL AGGIORNATO PER IL NUOVO ACCOUNT GOOGLE
-    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbzqfOfeM5TVvGVeOjkeVCqeRtaHvNlk-DkusAyCwIPALxkpTISx5at37E5GHmsoj6pNgA/exec";
+    // URL AGGIORNATO DEFINITIVO DEL NUOVO ACCOUNT
+    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbzWKllSH67OugBAmiO2wkjL0rzHjjWj85WVpuONWp0k0SP_CzKHOfujaoqQIezdueLVHw/exec";
 
     let selectedLetter = null;
     let currentMode = 'search';
