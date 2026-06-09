@@ -71,7 +71,6 @@
 <body>
 
 <div class="container">
-    <!-- SCHERMATA HOME (RIORDINATA) -->
     <div id="home-view" class="view">
         <h1>📝 PROMEMORIA PS</h1>
         <p>Gestisci i tuoi elementi e le loro descrizioni in modo semplice.</p>
@@ -82,7 +81,6 @@
         </div>
     </div>
 
-    <!-- SCHERMATA INSERIMENTO / MODIFICA -->
     <div id="add-view" class="view hidden">
         <h2 id="form-title">➕ Aggiungi Nuovo Promemoria</h2>
         <form id="item-form" onsubmit="saveItem(event)">
@@ -111,7 +109,6 @@
         </form>
     </div>
 
-    <!-- SCHERMATA CERCA (SOLO RICERCA E ALFABETO) -->
     <div id="search-view" class="view hidden">
         <h2>🔍 Cerca e Sfoglia</h2>
         
@@ -120,8 +117,7 @@
         </div>
 
         <div id="alphabet-filter-bar" class="alphabet-bar">
-            <!-- Generato dinamicamente -->
-        </div>
+            </div>
         
         <button onclick="switchView('home-view')" class="btn btn-back" style="margin-bottom: 20px;">Torna alla Home</button>
         
@@ -132,7 +128,6 @@
         </div>
     </div>
 
-    <!-- SCHERMATA STAMPA (RICERCA + DOPPIA OPZIONE DI STAMPA) -->
     <div id="print-view" class="view hidden">
         <h2 class="no-print">🖨️ Stampa Promemoria</h2>
         
@@ -159,16 +154,16 @@
     </div>
 </div>
 
-<!-- MODAL INGRANDIMENTO IMMAGINE -->
 <div id="image-modal" class="modal" onclick="this.style.display='none'">
     <img id="modal-img" src="" alt="Foto Ingrandita">
 </div>
 
 <script>
-    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwozdFGiW7oQWmtdsSyFhKOC1myCs1lvVap9YjzL3haAaIP0LnuHIuP0jU5Z8GXwFKP1g/exec";
+    // URL AGGIORNATO PER IL NUOVO ACCOUNT GOOGLE
+    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbzqfOfeM5TVvGVeOjkeVCqeRtaHvNlk-DkusAyCwIPALxkpTISx5at37E5GHmsoj6pNgA/exec";
 
     let selectedLetter = null;
-    let currentMode = 'search'; // 'search' o 'print'
+    let currentMode = 'search';
 
     function switchView(viewId) {
         document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
@@ -279,7 +274,6 @@
                     imgHtml = `<img src="${finalUrl}" class="memo-img-preview" onclick="zoomImage('${finalUrl}')" alt="Anteprima">`;
                 }
                 
-                // Nella modalità stampa mostriamo la casella di spunta, nella modalità cerca mostriamo i tasti modifica/elimina
                 let actionHtml = "";
                 if (mode === 'search') {
                     actionHtml = `
